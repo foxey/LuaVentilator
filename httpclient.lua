@@ -1,16 +1,14 @@
-LED_ALARM=2
-COLLECT_ALARM=1
-CONTROLLER_ALARM=0
+-- HTTP client to post sensordata to Thingspeak for Ventilator
+--
+-- Written by Michiel Fokke <michiel@fokke.org>
+--
+-- MIT license, http://opensource.org/licenses/MIT
 
-DHT11_PIN = 3 --  Sensor data pin, GPIO2
-LED_PIN = 1  -- Led power pin, GPIO5
+dofile("hal.lua")
+dofile("config.lua")
 
-SSID="ssid"
-WIFI_PASSWORD="password"
-api_key = "1234567890ABCDEF"
-
-dnsserver = "8.8.8.8"
 host = "api.thingspeak.com"
+alivecount = 0
 
 if vals == nil then
   vals = {}
@@ -20,7 +18,10 @@ if params == nil then
   params = {}
 end
 if params["collectinterval"] == nil then
-  params["collectinterval"] = 30
+  params["collectinterval"] = COLLECT_INTERVAL
+end
+if params["collectkeepalive"] == nil then
+  params["collectkeepalive"] = COLLECT_KEEPALIVE
 end
   
 ipaddr = nil
@@ -58,7 +59,7 @@ function collect()
   elseif vals["temp"] ~= nil and vals["hum"] ~= nil then
     print("Sending data to "..ipaddr)
     local conn=net.createConnection(net.TCP, false)
-    conn:on("receive", function(conn, pl) print(pl) end)
+    conn:on("receive", function(conn, pl) print(pl) alivecount = 0 end)
     -- fokke.org: 83.161.137.43
     conn:connect(80,ipaddr)
     conn:send("GET /update?key="..api_key.."&field1="..vals["temp"].."&field2="..vals["hum"])
@@ -72,6 +73,11 @@ function collect()
     conn:send("Host: "..host.."\r\n")
     conn:send("Connection: keep-alive\r\nAccept: */*\r\n")
     conn:send("\r\n")
+    alivecount = alivecount + 1
+    if alivecount > params["collectkeepalive"] then
+      print("Missed "..params["collectkeepalive"].." keep alives. Restarting")
+      node.restart()
+    end    
     tmr.alarm(COLLECT_ALARM, params["collectinterval"]*1000, 0, collect)
   end
 end

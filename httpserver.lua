@@ -1,12 +1,18 @@
- 	print("Starting server")
+-- Configuration HTTP server for Ventilator
+--
+-- Written by Michiel Fokke <michiel@fokke.org>
+--
+-- MIT license, http://opensource.org/licenses/MIT
+
+print("Starting server")
  
-  if params == nil then 
-    params = {}
-  end
+ if params == nil then 
+   params = {}
+ end
  
  if vals == nil then 
-    vals = {}
-  end
+   vals = {}
+ end
   
   srv=net.createServer(net.TCP) srv:listen(80,function(conn)
     conn:on("receive",function(conn,payload)
@@ -74,8 +80,12 @@
         conn:send('"></p>\n<p>Collect interval <input type="input" name="collectinterval" value="')
         if params["collectinterval"] ~= nil then
           conn:send(params["collectinterval"])
+        end 
+        conn:send('"> sec</p>\n<p>Collect keepalive <input type="input" name="collectkeepalive" value="')
+        if params["collectkeepalive"] ~= nil then
+          conn:send(params["collectkeepalive"])
         end        
-        conn:send('"> sec</p>\n<input type="submit" value="Update values">\n')
+        conn:send('"></p>\n<input type="submit" value="Update values">\n')
         conn:send('</body></html>\n')
       end
     end

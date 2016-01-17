@@ -1,3 +1,13 @@
+-- Remote operatable Ventilator Controller (based on ESP8266 MCU with NodeMCU firmware)
+--
+-- Written by Michiel Fokke <michiel@fokke.org>
+--
+-- MIT license, http://opensource.org/licenses/MIT
+
+dofile("hal.lua")
+dofile("config.lua")
+
+
 function abortInit()
 -- initailize abort boolean flag
 abort = false
