@@ -10,30 +10,27 @@ dofile("config.lua")
 host = "api.thingspeak.com"
 alivecount = 0
 
-if vals == nil then
-  vals = {}
-end
+params = params or {}
+vals = vals or {}
 
-if params == nil then
-  params = {}
+-- load parameters
+function Param(p)
+  params[p[KEY]]=params[p[KEY]] or p[DEFAULT]
 end
-if params["collectinterval"] == nil then
-  params["collectinterval"] = COLLECT_INTERVAL
-end
-if params["collectkeepalive"] == nil then
-  params["collectkeepalive"] = COLLECT_KEEPALIVE
-end
-  
+dofile("params.lua")
+
 ipaddr = nil
 
 function dnslookup()
   if (wifi.sta.status() ~= 5) then
-    print("Waiting for wifi. Status is "..wifi.sta.status())
+    print(string.format("Waiting for wifi. Status is %s", wifi.sta.status()))
+    wifi.setmode(wifi.STATION)
+    wifi.sta.config(SSID , WIFI_PASSWORD)
   else
     tmr.stop(COLLECT_ALARM)
     print("Lookup "..host)
     if (dnsserver ~= nil) then
-      print("Set 2nd dns server to "..dnsserver)
+      print(string.format("Set 2nd dns server to %s", dnsserver))
       net.dns.setdnsserver(dnsserver,1)
     end
     conn=net.createConnection(net.TCP, false)
@@ -43,7 +40,7 @@ end
 
 function getIp(conn, ip)
   if (ip == nil) then
-    print("Lookup for "..host.." at "..net.dns.getdnsserver(0).." and "..net.dns.getdnsserver(1).." failed. Retrying...")
+    print(string.format("Lookup for %s at %s and %s failed. Retrying..."), host, net.dns.getdnsserver(0), net.dns.getdnsserver(1))
     tmr.delay(2000000)
     node.restart()
   else
@@ -53,7 +50,12 @@ function getIp(conn, ip)
 end
 
 function collect()
-  if ipaddr == nil then
+  if (wifi.sta.status() ~= 5) then
+    print("Wifi not connected. Status is "..wifi.sta.status())
+    wifi.setmode(wifi.STATION)
+    wifi.sta.config(SSID , WIFI_PASSWORD)
+    tmr.alarm(COLLECT_ALARM, 1000, 0, collect)
+  elseif ipaddr == nil then
     print("Waiting for DNS lookup of "..host)
     tmr.alarm(COLLECT_ALARM, 500, 0, collect)
   elseif vals["temp"] ~= nil and vals["hum"] ~= nil then
@@ -62,7 +64,7 @@ function collect()
     conn:on("receive", function(conn, pl) print(pl) alivecount = 0 end)
     -- fokke.org: 83.161.137.43
     conn:connect(80,ipaddr)
-    conn:send("GET /update?key="..api_key.."&field1="..vals["temp"].."&field2="..vals["hum"])
+    conn:send(string.format("GET /update?key=%s&field1=%d.%03d&field2=%d.%03d", api_key.,math.floor(vals["temp"]/1000), math.floor(vals["temp"]%1000), math.floor(vals["hum"]/1000), math.floor(vals["hum"]%1000))
     if params["humSP"] ~= nil then
       conn:send("&field3="..params["humSP"])
     end
@@ -74,7 +76,9 @@ function collect()
     conn:send("Connection: keep-alive\r\nAccept: */*\r\n")
     conn:send("\r\n")
     alivecount = alivecount + 1
-    if alivecount > params["collectkeepalive"] then
+    if alivecount > 1 then
+      print("Already missed "..alivecount.." keep alives. Will restart after "..params["collectkeepalive"].." misses.")
+    elseif alivecount > tonumber(params["collectkeepalive"]) then
       print("Missed "..params["collectkeepalive"].." keep alives. Restarting")
       node.restart()
     end    

@@ -34,9 +34,9 @@ return
 end
 -- otherwise, start up
 print('in startup')
-dofile("picontroller.lua")
-dofile("httpserver.lua")
-dofile("httpclient.lua")
+dofile("control.lua")
+--dofile("httpserver.lua")
+--dofile("httpclient.lua")
 end
 
 tmr.alarm(0,1000,0,abortInit) -- call abortInit after 1s

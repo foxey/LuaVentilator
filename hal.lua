@@ -8,6 +8,6 @@ CONTROLLER_ALARM=0
 COLLECT_ALARM=1
 LED_ALARM=2
 
-DHT11_PIN = 3 --  Sensor data pin, GPIO2
+DHT11_PIN = 2 --  Sensor data pin, GPIO2
 LED_PIN = 1  -- Led power pin, GPIO5
 CONTROLLER_PIN = 4 -- Powers the onboard LED (test mode)

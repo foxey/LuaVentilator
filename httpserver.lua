@@ -6,13 +6,23 @@
 
 print("Starting server")
  
- if params == nil then 
-   params = {}
- end
- 
- if vals == nil then 
-   vals = {}
- end
+params = params or {}
+vals = vals or {}
+
+-- load parameters
+local param_keys={}
+function Param(p)
+  param_keys[p[KEY]]=p
+  params[p[KEY]]=params[p[KEY]] or p[DEFAULT]
+end
+dofile("params.lua")
+
+-- load value descriptions
+local value={}
+function Value(v)
+  value[v[KEY]]=v
+end
+dofile("values.lua")
   
   srv=net.createServer(net.TCP) srv:listen(80,function(conn)
     conn:on("receive",function(conn,payload)
@@ -40,51 +50,31 @@ print("Starting server")
           collectgarbage()
           --parse POST values from body
           for k,v in string.gmatch(body, "(%w+)=([^&]+)") do
-            params[k] = v
-            print(string.format("params[\"%s\"] = %s", k,v))
+            if param_keys[k] ~= nil then
+              params[k] = v
+              print(string.format("params[\"%s\"] = %s", k,v))
+            end
           end
         end
 
         print("HTTP 200")
     
-        conn:send('HTTP/1.1 200 OK\n\n')
-        conn:send('<!DOCTYPE HTML>\n')
-        conn:send('<html>\n')
+        conn:send("HTTP/1.1 200 OK\n\n")
+        conn:send("<!DOCTYPE HTML>\n")
+        conn:send("<html>\n")
         conn:send('<head><meta  content="text/html; charset=utf-8">\n')
-        conn:send('<title>Ventilator configurator</title></head>\n<body>\n')
-        if vals["hum"] ~= nil then
-            conn:send("<h1>Sensor values</h1>\n")
-          if vals["temp"] ~= nil then
-            conn:send("Temperature: "..vals["temp"])
-          end
-          conn:send("\n<br>Humidity: "..vals["hum"].."<br>\n")
+        conn:send("<title>Ventilator configurator</title></head>\n<body>\n")
+        conn:send("<h1>Sensor values</h1>\n")
+        for v in pairs(value) do
+          conn:send(string.format('%s: %s %s<br>\n', v[DESC], vals[v[KEY]] or "", v[UNIT]))
         end
+
         conn:send('<h1>Set parameters</h1>\n')
         conn:send('<form action="" method="POST">\n')
-        conn:send('<p>Humidity setpoint <input type="input" name="humSP" value="')
-        if params["humSP"] ~= nil then
-          conn:send(params["humSP"])
-        end
-        conn:send('"> %</p>\n<p>Controller interval <input type="input" name="controllerinterval" value="')
-        if params["controllerinterval"] ~= nil then
-          conn:send(params["controllerinterval"])
-        end
-        conn:send('"> sec</p>\n<p>Controller Kp value <input type="input" name="controllerKp" value="')
-        if params["controllerKp"] ~= nil then
-          conn:send(params["controllerKp"])
-        end
-        conn:send('"></p>\n<p>Controller Ki value <input type="input" name="controllerKi" value="')
-        if params["controllerKi"] ~= nil then
-          conn:send(params["controllerKi"])
-        end        
-        conn:send('"></p>\n<p>Collect interval <input type="input" name="collectinterval" value="')
-        if params["collectinterval"] ~= nil then
-          conn:send(params["collectinterval"])
-        end 
-        conn:send('"> sec</p>\n<p>Collect keepalive <input type="input" name="collectkeepalive" value="')
-        if params["collectkeepalive"] ~= nil then
-          conn:send(params["collectkeepalive"])
-        end        
+
+        for _,p in pairs(param_keys) do
+          conn:send(string.format('<p>%s <input type="input" name="%s" value="%s"> %s</p>\n', p[DESC], p[KEY], params[p[KEY]] or "", p[UNIT]))
+
         conn:send('"></p>\n<input type="submit" value="Update values">\n')
         conn:send('</body></html>\n')
       end
@@ -93,4 +83,5 @@ print("Starting server")
   end)
 end)
 
+-- vim: set si ts=2 sw=2 expandtab:
 
